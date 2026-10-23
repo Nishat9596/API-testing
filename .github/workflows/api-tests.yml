@@ -35,7 +35,7 @@ jobs:
       - run: npm install
       - name: Start the API
         run: |
-          node api/server.js &
-          npx --yes wait-on http://localhost:3000/health
+          nohup node api/server.js > server.log 2>&1 &
+          npx --yes wait-on -t 30000 http-get://localhost:3000/health
       - name: Run Postman collection with Newman
         run: npm run test:postman
