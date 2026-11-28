@@ -8,7 +8,7 @@
 REST API testing of a **Support Ticket API** in two ways:
 
 - **Postman collection** run from the command line with **Newman**: 18 requests and 48 assertions
-- **Playwright API tests** in JavaScript: 22 tests
+- **Playwright API tests** in JavaScript: 52 tests (22 core + 30 edge-case, boundary and auth tests)
 
 Both run automatically on GitHub Actions on every push.
 
@@ -22,18 +22,31 @@ Both run automatically on GitHub Actions on every push.
 | Validation (negative tests) | Missing title, title too short or too long, invalid priority or status, broken JSON |
 | Boundary values | Title lengths 2/3 (min) and 100/101 (max) |
 | Data integrity | `id` can't be changed with PATCH |
+| Auth edge cases | Empty login body, unknown or upper-case username, token without `Bearer`, unique tokens, auth on every write |
+| More negative and boundary cases | Whitespace-only or padded titles, wrong data types, upper-case priority, all errors reported at once, special characters and emoji |
+| Edge cases | Unknown status filter, double delete, PATCH/PUT on unknown or unsupported routes, empty PATCH body |
 | Performance | Every response under 500 ms |
 
-## Bug found by the tests
-Automated test API-15 found that sending a JSON **string** instead of an object **crashed the whole server**. See the full bug report: [`docs/BUG-001`](docs/BUG-001-server-crash-on-non-object-body.md). The bug is fixed, and regression tests now make sure it can't come back.
+## Bugs found by the tests
+
+| Bug | Severity | Status |
+|---|---|---|
+| [BUG-001](docs/BUG-001-server-crash-on-non-object-body.md): a JSON string as the body crashed the whole server | Critical | Fixed, regression tests added |
+| [BUG-002](docs/BUG-002-login-without-credentials.md): login with an empty body returns a valid token | Critical | Open |
+| [BUG-003](docs/BUG-003-non-numeric-ticket-id-returns-list.md): `/tickets/abc` and `/tickets/0` return the full list instead of 404 | Major | Open |
+| [BUG-004](docs/BUG-004-patch-saves-unknown-fields.md): PATCH saves any extra field (mass assignment) | Major | Open |
+| [BUG-005](docs/BUG-005-patch-does-not-trim-title.md): title is trimmed on create but not on update | Minor | Open |
+
+Tests for open bugs are marked with `test.fail()`: they're expected to fail until the bug is fixed, so CI stays green while the bug stays visible. Once a fix lands, the test starts passing, Playwright flags it, and the marker is removed.
 
 ## Project structure
 
 ```
 api/server.js                 Support Ticket API (Node.js, no dependencies) – the system under test
 postman/                      Postman collection + local environment
-tests/tickets.api.spec.js     Playwright API tests
-docs/                         Bug report
+tests/tickets.api.spec.js     Playwright API tests (core)
+tests/tickets.edge-cases.spec.js  Edge-case, boundary and auth tests
+docs/                         Bug reports
 .github/workflows/            CI pipeline (Playwright job + Newman job)
 ```
 
